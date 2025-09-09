@@ -1,8 +1,10 @@
 import os
 from flask import Flask, request
+from flask_cors import CORS
 
 # Create the web application
 app = Flask(__name__)
+CORS(app)
 
 # Define the /ingest endpoint. It only accepts POST requests.
 @app.route("/ingest", methods=["POST"])
