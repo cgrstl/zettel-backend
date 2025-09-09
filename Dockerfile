@@ -11,5 +11,5 @@ RUN pip install -r requirements.txt
 # Copy the rest of our application code (main.py)
 COPY . .
 
-# The command to start our Flask server when the container runs
-CMD ["python", "main.py"]
+# The command to start our Gunicorn production server
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "main:app"]
