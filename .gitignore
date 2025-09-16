@@ -1,0 +1,13 @@
+# Python-spezifische Dateien ignorieren
+__pycache__/
+*.pyc
+
+# Virtuelle Umgebung ignorieren
+.venv
+venv/
+
+# Systemdateien ignorieren
+.DS_Store
+
+# Geheime Umgebungsvariablen ignorieren
+.env
