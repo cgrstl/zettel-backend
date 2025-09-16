@@ -8,12 +8,13 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
+# Lade Umgebungsvariablen aus der .env Datei
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# --- Konfiguration der Gemini API ---
+# --- Gemini API Konfiguration ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("Kein GEMINI_API_KEY gefunden. Bitte in .env Datei eintragen.")
@@ -26,7 +27,7 @@ KNOWLEDGE_BASE_DIR = "knowledge_base"
 if not os.path.exists(KNOWLEDGE_BASE_DIR):
     os.makedirs(KNOWLEDGE_BASE_DIR)
 
-# --- VOLLSTÄNDIGE FUNKTIONEN VON VORHER ---
+# --- Bestehende Funktionen ---
 def save_content(url, title, content):
     """Eine zentrale Funktion zum Speichern von extrahierten Inhalten."""
     try:
@@ -73,15 +74,14 @@ def ingest_pdf_content():
     except Exception as e:
         print(f"Fehler bei der PDF-Verarbeitung von {pdf_url}: {e}")
         return jsonify({"status": "error", "message": "PDF konnte nicht verarbeitet werden"}), 500
-# ---------------------------------------------
 
-# --- NEUE ENDPUNKTE ---
 @app.route("/files", methods=["GET"])
 def list_files():
     try:
         files = [f for f in os.listdir(KNOWLEDGE_BASE_DIR) if f.endswith('.txt')]
         return jsonify({"status": "success", "files": files})
     except Exception as e:
+        print(f"Fehler beim Auflisten der Dateien: {e}")
         return jsonify({"status": "error", "message": "Dateien konnten nicht geladen werden"}), 500
 
 @app.route("/chat", methods=["POST"])
@@ -119,6 +119,47 @@ def chat_with_document():
     except Exception as e:
         print(f"!!!! Detaillierter KI-Fehler: {e} !!!!")
         return jsonify({"status": "error", "message": "Fehler bei der KI-Anfrage"}), 500
+
+# --- NEUER ENDPUNKT FÜR DIE FILTER-FUNKTION ---
+@app.route("/filter-documents", methods=["POST"])
+def filter_documents():
+    data = request.get_json()
+    if not data or "filter_prompt" not in data:
+        return jsonify({"status": "error", "message": "Fehlender 'filter_prompt'"}), 400
+
+    filter_prompt = data["filter_prompt"]
+    relevant_files = []
+
+    try:
+        all_files = [f for f in os.listdir(KNOWLEDGE_BASE_DIR) if f.endswith('.txt')]
+        for filename in all_files:
+            filepath = os.path.join(KNOWLEDGE_BASE_DIR, filename)
+            with open(filepath, "r", encoding="utf-8") as f:
+                content_preview = f.read(4000) # Lese nur die ersten 4000 Zeichen für eine schnelle Prüfung
+
+            relevance_prompt = f"""
+            Passt der folgende Text zum Thema "{filter_prompt}"? 
+            Antworte nur mit "JA" oder "NEIN".
+
+            Text:
+            ---
+            {content_preview}
+            ---
+            """
+            response = model.generate_content(relevance_prompt)
+            
+            answer = response.text.strip().upper()
+            print(f"Prüfe Datei '{filename}' für Thema '{filter_prompt}': KI sagt '{answer}'")
+
+            if "JA" in answer:
+                relevant_files.append(filename)
+        
+        return jsonify({"status": "success", "files": relevant_files})
+
+    except Exception as e:
+        print(f"Fehler beim Filtern: {e}")
+        return jsonify({"status": "error", "message": "Fehler beim Filtern der Dokumente"}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8080)
