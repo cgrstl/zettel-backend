@@ -11,3 +11,6 @@ venv/
 
 # Geheime Umgebungsvariablen ignorieren
 .env
+
+# Ignore specific project folders
+zettel-backend/knowledge_base/
